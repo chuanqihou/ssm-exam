@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chuanqihou.exam.mapper.PositionMapper">
+
+    <!--分页查询+职位名称条件查询-->
+    <select id="selectPosition" resultType="position">
+        select *
+        from t_position p inner join t_company c on p.cid = c.cid
+        <where>
+            <if test="pname!=null and pname!=''">
+                p.pname like '%${pname}%'
+            </if>
+        </where>
+    </select>
+
+    <!--
+    p.pname like "%"#{pname}"%"
+    p.pname like '%${pname}%'
+    p.pname like CONCAT('%',#{pname},'%')
+    -->
+
+    <!--插入一条职位信息-->
+    <insert id="insertPosition">
+        insert into t_position (pid, pname, minsal, maxsal, releasedate, cid)
+        values (null,#{pname},#{minsal},#{maxsal},now(),#{cid})
+    </insert>
+
+    <!--根据职位id删除职位信息-->
+    <delete id="deletePosition">
+        delete from t_position where pid=#{pid}
+    </delete>
+
+</mapper>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>招聘系统企业版</title>
+    <link rel="stylesheet" href="../resources/element-ui/lib/theme-chalk/index.css">
+    <script src="../resources/js/vue.js"></script>
+    <script src="../resources/element-ui/lib/index.js"></script>
+    <script src="../resources/js/axios.js"></script>
+
+</head>
+    <body>
+        <div id="app">
+            <!--顶部菜单-->
+            <el-row justify="space-between"  >
+              <!--  功能按钮-->
+              <el-col :span="8">
+                <el-button round type="primary" icon="el-icon-plus" @click="sendRecruitFlag=!sendRecruitFlag" >发布招聘信息</el-button>
+              </el-col>
+              <!--  搜索条件-->
+              <el-col :span="10">
+                  <el-form :inline="true" :model="searchFormData" :rules="searchRule" ref="searchRef">
+                      <el-form-item label="按职位" prop="pname">
+                          <el-input  placeholder="请输入职位" v-model="searchFormData.pname"/>
+                      </el-form-item>
+                      <el-form-item>
+                          <el-button round type="success" icon="el-icon-search" @click="searchBtn">搜索</el-button>
+                      </el-form-item>
+                  </el-form>
+              </el-col>
+            </el-row>
+
+            <div style="margin: 15px;"></div>
+
+            <!--数据展示-->
+            <el-table :data="positionList" border>
+              <el-table-column label="职位名称" prop="pname"></el-table-column>
+              <el-table-column label="公司名称" prop="cname"></el-table-column>
+              <el-table-column label="职位月薪" prop="sal" :formatter="formatSal" ></el-table-column>
+                <el-table-column label="工作地点" prop="loc" width="100px"></el-table-column>
+              <el-table-column label="发布日期" prop="releasedate" width="120px"></el-table-column>
+              <el-table-column label="操作" width="180px">
+                <template slot-scope="scope">
+                    <el-button type="danger" icon="el-icon-delete" @click="deleOne(scope.row)" >删除</el-button>
+                </template>
+            </el-table-column>
+            </el-table>
+            <br>
+            <!--分页-->
+            <el-pagination
+            background
+            :page-size="pageSize"
+            :page-sizes="pageSizes"
+            :current-page="pageNum"
+            :total="total"
+            layout="total,sizes,prev, pager, next, jumper"
+            @current-change="pager"
+            @size-change="changePageSize"
+            >
+            </el-pagination>
+
+            <el-dialog title="发布职位信息" :visible.sync="sendRecruitFlag" @close="closeAddPositionWin" >
+
+                <el-form :model="addPositionForm" :rules="PositionRule" ref="addPositionRef">
+
+                  <el-form-item label="职位名称："label-width="100px" prop="pname">
+                    <el-input v-model="addPositionForm.pname" placeholder="请输入职位名称" ></el-input>
+                  </el-form-item>
+
+                  <el-form-item label="最低薪水" label-width="100px" prop="minsal">
+                    <el-input type="number" prefix-icon="el-icon-money" v-model="addPositionForm.minsal" placeholder="请输入最低薪水"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="最高薪水" label-width="100px" prop="maxsal">
+                        <el-input type="number" prefix-icon="el-icon-money" v-model="addPositionForm.maxsal" placeholder="请输入最高薪水"></el-input>
+                    </el-form-item>
+
+                    <el-form-item label="发布公司" label-width="100px" prop="cid">
+                        <el-select placeholder="请选择发布公司" v-model="addPositionForm.cid">
+                            <div v-for="item in companyList">
+                                <el-option :label="item.cname" :value="item.cid"></el-option>
+                            </div>
+                        </el-select>
+                    </el-form-item>
+
+                  <el-form-item label-width="100px">
+                    <el-button type="success" icon="el-icon-check" @click="addPositionButton" >发布</el-button>
+                    <el-button type="warning" icon="el-icon-close" @click="addCancelButton" >取消</el-button>
+                  </el-form-item>
+
+                </el-form>
+
+            </el-dialog>
+        </div>
+
+        <script>
+            var app = new Vue({
+                el:"#app",
+                data:{
+                    searchFormData:{
+                        pname:undefined
+                    },
+                    positionList:[],
+                    total:0,
+                    pageSize:4,
+                    pageNum:1,
+                    pageSizes:[4,10,20],
+                    sendRecruitFlag:false,
+                    addPositionForm:{
+                        pname:undefined,
+                        minsal:0,
+                        maxsal:0,
+                        cid:undefined
+                    },
+                    PositionRule:{
+                        pname:[
+                            {required:true,message:"职位名称必填",trigger:"blur"}
+                        ],
+                        minsal:[
+                            {required:true,message:"最低薪资必填",trigger:"blur"}
+                        ],
+                        maxsal:[
+                            {required:true,message:"最高薪资必填",trigger:"blur"}
+                        ],
+                        cid:[
+                            {required:true,message:"公司必选",trigger:"blur"}
+                        ]
+                    },
+                    searchRule:{
+                        pname:[]
+                    },
+                    companyList:[]
+                },
+                methods:{
+                    // 数据格式化
+                    formatSal(row){
+                        return "￥"+Number(row.minsal).toFixed(2)+"-"+"￥"+Number(row.maxsal).toFixed(2)
+                    },
+                    // 添加
+                    addPositionButton(){
+                        this.$refs.addPositionRef.validate(validate=>{
+                            if(validate){
+                                console.log(this.addPositionForm)
+                                axios({
+                                    url: "/exam/position/addPosition.do",
+                                    method: "post",
+                                    params: this.addPositionForm
+                                }).then((res)=>{
+                                    if(res.data.code===200){
+                                        this.$notify({
+                                            title:"温馨提示",
+                                            message:"成功添加一条数据",
+                                            type:"success"
+                                        })
+                                        this.$refs.addPositionRef.resetFields();
+                                        this.sendRecruitFlag = false;
+                                        this.pager(1)
+                                    }else{
+                                        this.$notify({
+                                            title:"温馨提示",
+                                            message:"添加失败！"+res.data.msg,
+                                            type:"error"
+                                        })
+                                    }
+                                }).catch((err=>{
+                                    this.$notify({
+                                        title:"温馨提示",
+                                        message:"系统错误，请联系管理员！",
+                                        type:"error"
+                                    })
+                                }))
+                            }else{
+                                this.$alert("请填写正确数据！","温馨提示")
+                            }
+                        })
+                    },
+                    addCancelButton(){
+                        this.flag = false;
+                        this.$refs.addPositionRef.resetFields();
+                    },
+                    closeAddPositionWin(){
+                        this.$refs.addPositionRef.resetFields();
+                    },
+                    // 单个删除
+                    deleOne(row){
+                        this.$confirm("确定删除？","温馨提示").then(()=>{
+                            axios({
+                                method:"post",
+                                url:"/exam/position/cutPosition.do",
+                                params:{
+                                    pid: row.pid
+                                }
+                            })
+                            .then(response => {
+                                if(response.data.code === 200){
+                                    this.$notify({
+                                        title:"温馨提示",
+                                        message:"删除成功！",
+                                        type:"success"
+                                    })
+                                    this.pager(1)
+                                }else{
+                                    this.$notify({
+                                        title:"温馨提示",
+                                        message:"删除失败，请联系管理员！",
+                                        type:"error"
+                                    })
+                                }
+                            })
+                            .catch(error => {
+                                this.$notify({
+                                    title:"温馨提示",
+                                    message:"系统错误，请联系管理员！",
+                                    type:"error"
+                                })
+                            });
+                        })
+                    },
+                    // 搜索
+                    searchBtn(){
+                        if(this.searchFormData.pname===""){
+                            this.searchFormData.pname = undefined;
+                        }
+                        this.pager(1);
+                    },
+                    //改变每页显示条数
+                    changePageSize(pageSize){
+                        this.pageSize = pageSize;
+                        this.pager(1)
+                    },
+                    //分页
+                    pager(currentPage){
+                        this.pageNum = currentPage;
+                        console.log(this.searchFormData.pname)
+                        axios({
+                            method:"post",
+                            url:"/exam/position/getPositionByPageAndSearch.do",
+                            params:{
+                                pageSize:this.pageSize,
+                                pageNum:this.pageNum,
+                                pname:this.searchFormData.pname
+                            }
+                        }).then(res=>{
+                            if(res.data.code===200) {
+                                this.total = res.data.total;
+                                this.positionList = res.data.data;
+                            }else{
+                                this.$notify({
+                                    title:"温馨提示",
+                                    message:res.data.msg,
+                                    type:"error"
+                                })
+                            }
+                        }).catch(e=>{
+                            this.$notify({
+                                title:"温馨提示",
+                                message:"系统错误，请联系管理员！",
+                                type:"error"
+                            })
+                        })
+                    },
+                    //获取所有公司信息
+                    getCompanyList(){
+                        axios({
+                            method:"post",
+                            url:"/exam/company/getAllCompany.do"
+                        }).then(res=>{
+                            if(res.data.code===200) {
+                                this.companyList = res.data.data;
+                            }else{
+                                this.$notify({
+                                    title:"温馨提示",
+                                    message:res.data.msg,
+                                    type:"error"
+                                })
+                            }
+                        }).catch(e=>{
+                            this.$notify({
+                                title:"温馨提示",
+                                message:"系统错误，请联系管理员！",
+                                type:"error"
+                            })
+                        })
+                    }
+                },
+                //初始化
+                created(){
+                    this.pager(1);
+                    this.getCompanyList();
+                }
+            })
+        </script>
+    </body>
+</html>
